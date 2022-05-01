@@ -8,227 +8,240 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using System.IO;
+using System.Text.RegularExpressions;
 
-namespace Exxon_Sensor_File_Generator
+namespace Read_Sensor
 {
     public partial class Form1 : Form
     {
-        // Initlialize and declare our variables
-        public int SENSOR_RAND = 0;
- 
-        public int LOC_HORIZONTAL = 0;
-        public int LOC_HORIZONTAL_DEC = 0;
-        public int LOC_VERTICAL = 0;
-        public int LOC_VERTICAL_DEC = 0;
-        public int ALTITUDE = 0;
-        public int BATTERY = 0;
-        public int FLOW_LEVEL = 48;
-        public int FLOW_SPEED = 7;
-        public int VISCOCITY = 500;
-        public int TEMP_INSIDE = 40;
-        public int TEMP_OUTSIDE = 70;
-        public int MEMORY = 0;
-
-        public int PROBABILITY = 0;
-        public int LOOP_KEEPER = 1;
-
-        // FilePath
-        string FP = @"C:\ERAU\Vazquez-VTprg.csv";
+        // Initialize our variables
+        string FILETOREAD = @"C:\ERAU\Vazquez-VTprg.csv";
+        string FILETOWRITE = @"C:\ERAU\Results.csv";
         // Headers
-        string TITLES = "Sensor ID,Route,Date and Time,GPS W, GPS N,Altitude,Battery Life,Flow Level,Flow Speed,Viscocity,Pipeline Temperature (Inside),Pipeline Temperature (Outside),Free Space Available,IP Address,\n";
+        string TITLES = "Sensor ID,Route,Date and Time,GPS W, GPS N,Altitude,Battery Life,Flow Level,Flow Speed,Viscocity,Pipeline Temperature (Inside),Pipeline Temperature (Outside),Free Space Available,IP Address,Valve Level\n";
+        int VALVE_LEVEL = 0;
         public Form1()
         {
             InitializeComponent();
         }
-        // Function to Generate Data
-        private async void btnCheckSensor_Click(object sender, EventArgs e)
+
+        private void btnReadData_Click(object sender, EventArgs e)
         {
-            string[] fileValidation;
-            // Variable that will be used in our for loop
+            // Variable that will be used for the for loop
             int i = 0;
+            // Variable that will be used to check if a file exists
+            string[] fileValidation;
 
-            // Try to make the program read the file
-            try
+            // Check that the sensor number button has been selected
+            if (btnSensorNumber.Checked == true)
             {
-                fileValidation = System.IO.File.ReadAllLines(FP);
-            }
-            // If the file is not found, send a message to the user and stop the program
-            catch (FileNotFoundException)
-            {
-                MessageBox.Show("Please enter data into the file");
-                this.Close();
-            }
-            // If the Directory is not found, send a message to the user and stop the program
-            catch (DirectoryNotFoundException)
-            {
-                MessageBox.Show("Directory not found");
-                this.Close();
-            }
-            // If something else fails, also report it
-            catch
-            {
-                MessageBox.Show("Please enter data into the file");
-                this.Close();
-            }
-
-            // Check that the file is not empty
-            if (FP != null)
-            {
-                //Write the headers into the file
-                File.WriteAllText(FP, TITLES);
-                // Iterate through this loop 100 times
-                for (i = 1; i < 101; ++i)
+                // Show the instructions to the user of how to enter input
+                lblInstructions.Text = "Please enter a sensor number\n";
+                // Check that textbox is not empty
+                if (txtInput.Text == "")
                 {
-                    // Wait 15 seconds to create the data
-                    await Task.Delay(TimeSpan.FromSeconds(15));
-                    // Generate a sensor to check
-                    Random sensor_rand = new Random();
-                    SENSOR_RAND = sensor_rand.Next(1, 13);
-                    // Create all the data for the file and write it into the file
-                    File.AppendAllText(FP, "ExxonVT" + SENSOR_RAND.ToString() + ",");
-                    createRoute(sender, e, SENSOR_RAND);
-                    File.AppendAllText(FP, DateTime.Now.ToString() + ",");
-                    createCoordinates(sender, e, SENSOR_RAND);
-                    createAltitude(sender, e, SENSOR_RAND);
-                    createBattery(sender, e);
-                    createFlowLevel(sender, e);
-                    createFlowSpeed(sender, e);
-                    createViscocity(sender, e);
-                    createTempInside(sender, e);
-                    createTempOutside(sender, e);
-                    createMemory(sender, e);
-                    getIPAddress(sender, e, SENSOR_RAND);
-                    // Skip to the next line of the file
-                    File.AppendAllText(FP, "\n");
+                    MessageBox.Show("Please enter a value");
                 }
-                // When the for loop is done, generate a message to the user that the data was successfully recorded
-                MessageBox.Show("Data has been successfully entered");
+                // If input is not a number, tell the user to enter a number
+                else if (checkInt(txtInput) == 1)
+                {
+                    MessageBox.Show("Please enter a valid sensor number from 1-12");
+                }
+                // Check that the input is an integer
+                else if (checkInt(txtInput) == 0)
+                {
+                    // If the input is valid, convert the string into an integer
+                    int num = int.Parse(txtInput.Text);
+                    // Check that the input is between 1-12
+                    if (num >= 1 && num <= 12)
+                    {
+                        // Try to make the program read the file
+                        try
+                        {
+                            fileValidation = System.IO.File.ReadAllLines(FILETOREAD);
+                        }
+                        // If the file is not found, send a message to the user and stop the program
+                        catch (FileNotFoundException)
+                        {
+                            MessageBox.Show("Please enter data into the file");
+                            this.Close();
+                        }
+                        // If the Directory is not found, send a message to the user and stop the program
+                        catch (DirectoryNotFoundException)
+                        {
+                            MessageBox.Show("Directory not found");
+                            this.Close();
+                        }
+                        // If something else fails, also report it
+                        catch
+                        {
+                            MessageBox.Show("Please enter data into the file");
+                            this.Close();
+                        }
+                        // Read the file into a string of lines
+                        string[] lines = File.ReadAllLines(FILETOREAD);
+                        // Check that the file is not empty
+                        if (FILETOREAD != null)
+                        {
+                            // Write the headers into the file
+                            File.WriteAllText(FILETOWRITE, TITLES);
+                            // Iterate through the string of lines
+                            for (i = 0; i < lines.Length; ++i)
+                            {
+                                // If a line starts with ExxonVT and the number from the user, append it into the file to write
+                                if (lines[i].StartsWith("ExxonVT" + num))
+                                {
+                                    File.AppendAllText(FILETOWRITE, lines[i]);
+                                    // Append if the valve is open or closed
+                                    writeValveLevel(sender, e);
+                                }
+                            }
+                            // Tell the user that the data was recorded successfully
+                            MessageBox.Show("Data has been recorded successfully");
+                        }
+                        // If file is null or empty, report it
+                        else
+                        {
+                            MessageBox.Show("Please enter data into the file");
+                        }
+                    }
+                    // If the input is out of range, show a message to the user
+                    else if (num < 1 || num > 12)
+                    {
+                        MessageBox.Show("Enter a number between 1-12");
+                    }
+                }
+                // If anything else fails, report it to the user
+                else
+                {
+                    MessageBox.Show("Enter a valid number");
+                }
             }
-            
+            // Check that the Max Temperature button is selected
+            else if (btnMaxTemp.Checked == true)
+            {
+                // Show the instructions to the user of how to enter input
+                lblInstructions.Text = "Please enter a max temperature";
+                // Check if textbox is empty
+                if (txtInput.Text == "")
+                {
+                    MessageBox.Show("Please enter a value");
+                }
+                // Check if the input is not an integer
+                else if (checkInt(txtInput) == 1)
+                {
+                    MessageBox.Show("Please enter a valid max temperature from -10-120");
+                }
+                // Check if input is an integer
+                else if (checkInt(txtInput) == 0)
+                {
+                    // Convert the input from a string to an integer
+                    int num = int.Parse(txtInput.Text);
+                    // Check if the input is between the valid range
+                    if (num >= -10 && num <= 120)
+                    {
+                        try
+                        {
+                            fileValidation = System.IO.File.ReadAllLines(FILETOREAD);
+                        }
+                        catch (FileNotFoundException)
+                        {
+                            MessageBox.Show("Please enter data into the file");
+                            this.Close();
+                        }
+                        catch (DirectoryNotFoundException)
+                        {
+                            MessageBox.Show("Please enter data into the file");
+                            this.Close();
+                        }
+                        catch
+                        {
+                            MessageBox.Show("Please enter data into the file");
+                            this.Close();
+                        }
+                        // Read the file into a string of lines
+                        string[] lines = File.ReadAllLines(FILETOREAD);
+                        // Check if the file read is not null or empty
+                        if (FILETOREAD != null)
+                        {
+                            // Write the headers into the file to write
+                            File.WriteAllText(FILETOWRITE, TITLES);
+                            // Iterate through the string of lines
+                            for (i = 0; i < lines.Length; ++i)
+                            {
+                                // Look for lines that contain the temperature the user desires
+                                if (lines[i].Contains("," + num.ToString() + " C"))
+                                {
+                                    // Write to the file the lines that contain the temperature the user wants
+                                    File.AppendAllText(FILETOWRITE, lines[i]);
+                                    // Write to the file if the valve is open or closed
+                                    writeValveLevel(sender, e);
+                                }
+                            }
+                            // Tell the user the data was recorded successfully
+                            MessageBox.Show("Data has been recorded successfully");
+                        }
+                        // If file is empty, tell the user to enter data into the file
+                        else
+                        {
+                            MessageBox.Show("Please enter data into the file");
+                        }
+                    }
+                    // Check if input entered is out of the range of temperatures
+                    else if (num < -10 || num > 120)
+                    {
+                        MessageBox.Show("Enter a temperature between -10-120");
+                    }
+                }
+                // If anything fails when checking input, let the user know
+                else
+                {
+                    MessageBox.Show("Enter a valid number");
+                }
+            }
+            // Check if none of the buttons were checked
+            else if (btnMaxTemp.Checked != true && btnSensorNumber.Checked != true)
+            {
+                MessageBox.Show("You must choose one option");
+            }
+            // If anything else fails, send a message to the user
+            else
+            {
+                MessageBox.Show("Sensor number and temperature did not return ANYTHING");
+            }
         }
-
-        // Choose which route the sensors are from
-        private void createRoute(object sender, EventArgs e, int route)
+        // Function created to check if the input from the user is an integer
+        private int checkInt(TextBox textBox)
         {
-            if (route > 0 && route <= 6)
+            int i;
+
+            //Checking if input is not a number
+            if ((!int.TryParse(textBox.Text, out i)) && (textBox.Text != ""))
             {
-                File.AppendAllText(FP, "Spokane,");
+                return 1;
             }
-            else if (route > 6 && route <= 12)
+            // Return 0 if input is in fact an integer
+            else
             {
-                File.AppendAllText(FP, "Great Falls,");
+                return 0;
+            }
+        }
+        // Function that chooses if a valve is open and write the valve level to the file
+        private void writeValveLevel(object sender, EventArgs e)
+        {
+            Random valve = new Random();
+            VALVE_LEVEL = valve.Next(1, 3);
+            if (VALVE_LEVEL == 1)
+            {
+                File.AppendAllText(FILETOWRITE, "Open\n");
             }
             else
             {
-                MessageBox.Show("The route is non-existent");
+                File.AppendAllText(FILETOWRITE, "Closed\n");
             }
         }
-
-        // Generate the coordinates of the sensors depending on their route
-        private void createCoordinates(object sender, EventArgs e, int route)
-        {
-            if (route > 0 && route <= 6)
-            {
-                LOC_VERTICAL = -117;
-                LOC_HORIZONTAL = 47;
-                Random sensor_vert_dec = new Random();
-                LOC_VERTICAL_DEC = sensor_vert_dec.Next(300, 999);
-                Random sensor_hor_dec = new Random();
-                LOC_HORIZONTAL_DEC = sensor_hor_dec.Next(600, 800);
-
-                File.AppendAllText(FP, LOC_HORIZONTAL.ToString() + "." + LOC_HORIZONTAL_DEC.ToString()
-                + "," + LOC_VERTICAL.ToString() + "." + LOC_VERTICAL_DEC.ToString() + ",");
-            }
-            else if (route > 6 && route <= 12)
-            {
-                LOC_VERTICAL = -11;
-                LOC_HORIZONTAL = 47;
-                Random sensor_vert_dec = new Random();
-                LOC_VERTICAL_DEC = sensor_vert_dec.Next(300, 999);
-                Random sensor_hor_dec = new Random();
-                LOC_HORIZONTAL_DEC = sensor_hor_dec.Next(600, 800);
-
-                File.AppendAllText(FP, LOC_HORIZONTAL.ToString() + "." + LOC_HORIZONTAL_DEC.ToString()
-                + "," + LOC_VERTICAL.ToString() + "." + LOC_VERTICAL_DEC.ToString() + ",");
-            }
-        }
-        
-        // Generate the altitude of the sensor depending on the route
-        private void createAltitude(object sender, EventArgs e, int route)
-        {
-            if (route > 0 && route <= 6)
-            {
-                File.AppendAllText(FP, "1843 ft,");
-            }
-            else if (route > 6 && route <= 12)
-            {
-                File.AppendAllText(FP, "3330 ft,");
-            }
-        }
-
-        // Generate the battery percentage for each sensor
-        private void createBattery(object sender, EventArgs e) {
-            Random sensor_bat = new Random();
-            BATTERY = sensor_bat.Next(0, 101);
-            File.AppendAllText(FP, BATTERY.ToString() + "%,");
-        }
-
-        // Generate the flow level for each sensor
-        private void createFlowLevel(object sender, EventArgs e)
-        {
-            Random flow_level = new Random();
-            FLOW_LEVEL = flow_level.Next(4, 40);
-            File.AppendAllText(FP, FLOW_LEVEL.ToString() + " in,");
-        }
-
-        // Generate the flow speed for each sensor
-        private void createFlowSpeed(object sender, EventArgs e)
-        {
-            Random flow_speed = new Random();
-            FLOW_SPEED = flow_speed.Next(3, 8);
-            File.AppendAllText(FP, FLOW_SPEED.ToString() + "mph,");
-        }
-
-        // Generate the viscocity for each sensor
-        private void createViscocity(object sender, EventArgs e)
-        {
-            Random viscocity = new Random();
-            VISCOCITY = viscocity.Next(480, 520);
-            File.AppendAllText(FP, VISCOCITY.ToString() + " cSt,");
-        }
-
-        // Generate the temperature inside for each sensor
-        private void createTempInside(object sender, EventArgs e)
-        {
-            Random temp_inside = new Random();
-            TEMP_INSIDE = temp_inside.Next(30, 55);
-            File.AppendAllText(FP, TEMP_INSIDE.ToString() + " C,");
-        }
-
-        // Generate the temperature outside for each sensor
-        private void createTempOutside(object sender, EventArgs e)
-        {
-            Random temp_outside = new Random();
-            TEMP_OUTSIDE = temp_outside.Next(-10, 120);
-            File.AppendAllText(FP, TEMP_OUTSIDE.ToString() + " C,");
-        }
-
-        // Generate how much memory is left in each sensor
-        private void createMemory(object sender, EventArgs e)
-        {
-            Random memory = new Random();
-            MEMORY = memory.Next(0, 101);
-            File.AppendAllText(FP, MEMORY.ToString() + "%,");
-        }
-
-        // Generate the IP Address depending on the Sensor ID
-        private void getIPAddress(object sender, EventArgs e, int route)
-        {
-            File.AppendAllText(FP, "67.193.12." + route.ToString() + ",");
-        }
-
-        // Function to close the program
-        private void btnExit_Click(object sender, EventArgs e)
+        // Function that closes the program
+        private void btnClose_Click(object sender, EventArgs e)
         {
             Close();
         }
